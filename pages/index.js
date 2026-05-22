@@ -37,6 +37,13 @@ export default function Home() {
       p.persons   = toArr(p.persons);
       p.thresholds= toArr(p.thresholds).length ? toArr(p.thresholds) : [{thresh:'',count:1,cur:'KRW'}];
       if (!p.orders) p.orders = {};
+      // Firebase strips empty objects like mbQ:{} — restore them
+      for (var person in p.orders) {
+        for (var pid in p.orders[person]) {
+          var o = p.orders[person][pid];
+          if (o && !o.mbQ) o.mbQ = {};
+        }
+      }
       if (!p._pg)    p._pg = 'products';
       return p;
     }
@@ -86,6 +93,7 @@ export default function Home() {
     function eOrd(p,person,pid){
       if(!p.orders[person]) p.orders[person]={};
       if(!p.orders[person][pid]) p.orders[person][pid]={mbQ:{},noQ:0,chk:false};
+      if(!p.orders[person][pid].mbQ) p.orders[person][pid].mbQ={};
       return p.orders[person][pid];
     }
     function tQ(o){ var s=0; for(var k in o.mbQ) s+=o.mbQ[k]; return s+(o.noQ||0); }
@@ -206,7 +214,7 @@ export default function Home() {
       var g = document.getElementById('aG').value.trim(), dt = document.getElementById('aD').value;
       if (D.at === 'popup') {
         var p = {id:uid(),name:n,group:g,date:dt,products:[],members:[],persons:[],orders:{},thresholds:[{thresh:'',count:1,cur:'KRW'}],_pg:'products'};
-        D.popups.push(p); D.curP = p.id; saveData(); closeMov(); clearMov(); goTab(1);
+        D.popups.push(p); D.curP = p.id; try{sessionStorage.setItem('dpm_curP',p.id);}catch(e){} saveData(); closeMov(); clearMov(); goTab(1);
       } else {
         var j = {id:uid(),name:n,group:g,date:dt,jproducts:[]};
         D.joints.push(j); D.curJ = j.id; saveData(); closeMov(); clearMov(); goTab(2);
