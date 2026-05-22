@@ -601,9 +601,9 @@ export default function Home() {
       fbRef = m.ref;
       fbSet = m.set;
       fbGet = m.get;
+      firebaseLoaded = true;
       return loadData();
     }).then(function() {
-      firebaseLoaded = true;
       if (pendingSave) saveData();
       if (D.tab === 0) rHome();
       else if (D.tab === 1) rPopup();
