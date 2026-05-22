@@ -12,10 +12,12 @@ export default function Home() {
 
     var DB_PATH = 'popupManagerData';
     var fbRef, fbSet, fbGet;
+    var pendingSave = false;
 
     // ── STORAGE ──
     function saveData() {
-      if (!db || !fbRef || !fbSet) return;
+      if (!db || !fbRef || !fbSet) { pendingSave = true; return; }
+      pendingSave = false;
       fbSet(fbRef(db, DB_PATH), { popups: D.popups, joints: D.joints, am: D.am })
         .catch(function(e){ console.error('saveData error:', e); });
       var el = document.getElementById('saveIndicator');
@@ -32,9 +34,25 @@ export default function Home() {
         var snapshot = await fbGet(fbRef(db, DB_PATH));
         if (snapshot.exists()) {
           var saved = snapshot.val();
-          if (saved.popups) D.popups = saved.popups;
-          if (saved.joints) D.joints = saved.joints;
-          if (saved.am)     D.am     = saved.am;
+          if (saved.popups) {
+            if (!D.popups.length) {
+              D.popups = saved.popups;
+            } else {
+              var existingIds = D.popups.map(function(p){ return p.id; });
+              saved.popups.forEach(function(p){ if(existingIds.indexOf(p.id)<0) D.popups.unshift(p); });
+            }
+          }
+          if (saved.joints) {
+            if (!D.joints.length) {
+              D.joints = saved.joints;
+            } else {
+              var existingJIds = D.joints.map(function(j){ return j.id; });
+              saved.joints.forEach(function(j){ if(existingJIds.indexOf(j.id)<0) D.joints.unshift(j); });
+            }
+          }
+          if (saved.am) {
+            for (var k in saved.am) { if (!D.am[k]) D.am[k] = saved.am[k]; }
+          }
         }
       } catch(e) { console.error('loadData error:', e); }
     }
@@ -548,12 +566,17 @@ export default function Home() {
       fbGet = m.get;
       return loadData();
     }).then(function() {
+      if (pendingSave) saveData();
       if (D.tab === 0) rHome();
       else if (D.tab === 1) rPopup();
       else if (D.tab === 2) rJoint();
       else rStats();
     }).catch(function(e) {
       console.error('Firebase load error:', e);
+      if (D.tab === 0) rHome();
+      else if (D.tab === 1) rPopup();
+      else if (D.tab === 2) rJoint();
+      else rStats();
     });
 
     return function() {
