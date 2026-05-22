@@ -28,6 +28,23 @@ export default function Home() {
       }
     }
 
+    // Firebaseは空配列を保存しないので、ロード時にオブジェクトになる場合がある
+    function toArr(v) { if (!v) return []; if (Array.isArray(v)) return v; return Object.values(v); }
+
+    function normPopup(p) {
+      p.products  = toArr(p.products);
+      p.members   = toArr(p.members);
+      p.persons   = toArr(p.persons);
+      p.thresholds= toArr(p.thresholds).length ? toArr(p.thresholds) : [{thresh:'',count:1,cur:'KRW'}];
+      if (!p.orders) p.orders = {};
+      if (!p._pg)    p._pg = 'products';
+      return p;
+    }
+    function normJoint(j) {
+      j.jproducts = toArr(j.jproducts).map(function(jp){ jp.buyers = toArr(jp.buyers); return jp; });
+      return j;
+    }
+
     async function loadData() {
       if (!db || !fbRef || !fbGet) return;
       try {
@@ -35,23 +52,25 @@ export default function Home() {
         if (snapshot.exists()) {
           var saved = snapshot.val();
           if (saved.popups) {
+            var incoming = toArr(saved.popups).map(normPopup);
             if (!D.popups.length) {
-              D.popups = saved.popups;
+              D.popups = incoming;
             } else {
               var existingIds = D.popups.map(function(p){ return p.id; });
-              saved.popups.forEach(function(p){ if(existingIds.indexOf(p.id)<0) D.popups.unshift(p); });
+              incoming.forEach(function(p){ if(existingIds.indexOf(p.id)<0) D.popups.unshift(p); });
             }
           }
           if (saved.joints) {
+            var incomingJ = toArr(saved.joints).map(normJoint);
             if (!D.joints.length) {
-              D.joints = saved.joints;
+              D.joints = incomingJ;
             } else {
               var existingJIds = D.joints.map(function(j){ return j.id; });
-              saved.joints.forEach(function(j){ if(existingJIds.indexOf(j.id)<0) D.joints.unshift(j); });
+              incomingJ.forEach(function(j){ if(existingJIds.indexOf(j.id)<0) D.joints.unshift(j); });
             }
           }
           if (saved.am) {
-            for (var k in saved.am) { if (!D.am[k]) D.am[k] = saved.am[k]; }
+            for (var k in saved.am) { if (!D.am[k]) D.am[k] = toArr(saved.am[k]); }
           }
         }
       } catch(e) { console.error('loadData error:', e); }
@@ -102,10 +121,10 @@ export default function Home() {
       else if (act === 'setAT') setAT(d.v);
       else if (act === 'doCreate') doCreate();
       else if (act === 'goTab') goTab(+d.n);
-      else if (act === 'openP') { D.curP = d.id; goTab(1); }
-      else if (act === 'openJ') { D.curJ = d.id; goTab(2); }
-      else if (act === 'switchP') { D.curP = null; rPopup(); }
-      else if (act === 'switchJ') { D.curJ = null; rJoint(); }
+      else if (act === 'openP') { D.curP = d.id; try{sessionStorage.setItem('dpm_curP',d.id);}catch(e){} goTab(1); }
+      else if (act === 'openJ') { D.curJ = d.id; try{sessionStorage.setItem('dpm_curJ',d.id);}catch(e){} goTab(2); }
+      else if (act === 'switchP') { D.curP = null; try{sessionStorage.removeItem('dpm_curP');}catch(e){} rPopup(); }
+      else if (act === 'switchJ') { D.curJ = null; try{sessionStorage.removeItem('dpm_curJ');}catch(e){} rJoint(); }
       else if (act === 'delP') delP(d.id);
       else if (act === 'delJ') delJ(d.id);
       else if (act === 'setPg') setPg(d.id, d.pg);
@@ -198,6 +217,7 @@ export default function Home() {
     // ── TAB ──
     function goTab(n) {
       D.tab = n;
+      try { sessionStorage.setItem('dpm_tab', n); } catch(e) {}
       ['scHome','scPopup','scJoint','scStats'].forEach(function(id,i){
         document.getElementById(id).className = 'scr' + (i===n?' on':'');
       });
@@ -557,8 +577,16 @@ export default function Home() {
       el.innerHTML=h;
     }
 
-    // ── INIT: 先に画面を表示してからFirebaseをロード ──
-    rHome();
+    // ── INIT: セッション状態を復元してからFirebaseをロード ──
+    try {
+      var _t = sessionStorage.getItem('dpm_tab');
+      var _p = sessionStorage.getItem('dpm_curP');
+      var _j = sessionStorage.getItem('dpm_curJ');
+      if (_t !== null) D.tab = +_t;
+      if (_p) D.curP = _p;
+      if (_j) D.curJ = _j;
+    } catch(e) {}
+    goTab(D.tab);
 
     import('firebase/database').then(function(m) {
       fbRef = m.ref;
