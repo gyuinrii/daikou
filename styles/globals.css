@@ -61,8 +61,11 @@ select.fi option{background:#fff}
 .tdel{width:15px;height:15px;border-radius:50%;border:none;background:var(--bd);color:var(--tx2);cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .tdel:active{background:var(--red);color:#fff}
 
+.swipe-wrap{position:relative;overflow:hidden;border-radius:var(--r);margin-bottom:8px}
+.swipe-del-btn{position:absolute;right:0;top:0;bottom:0;width:76px;background:#cc2828;color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Noto Sans JP',sans-serif;line-height:1.2}
 .hcard{background:var(--sf);border:1.5px solid var(--bd);border-radius:var(--r);display:flex;align-items:center;gap:12px;padding:13px 14px;margin-bottom:8px;cursor:pointer}
 .hcard:active{background:var(--sf2)}
+.swipe-wrap .hcard{margin-bottom:0;transition:transform .22s;will-change:transform;touch-action:pan-y}
 .hcard-av{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .av-p{background:#e06878}
 .av-j{background:#8bc8ea}

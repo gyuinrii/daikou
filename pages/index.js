@@ -13,6 +13,14 @@ export default function Home() {
     var DB_PATH = 'popupManagerData';
     var fbRef, fbSet, fbGet;
     var pendingSave = false;
+    var swipedCard = null, swipe = null;
+
+    function resetSwipe() {
+      if (!swipedCard) return;
+      swipedCard.style.transition = 'transform .22s';
+      swipedCard.style.transform = '';
+      swipedCard = null;
+    }
 
     // ── STORAGE ──
     function saveData() {
@@ -170,6 +178,14 @@ export default function Home() {
     var clickHandler = function(e) {
       var t = e.target;
       if (t.id === 'mov') { closeMov(); return; }
+      if (swipedCard) {
+        var node = t;
+        while (node && node !== document) {
+          if (node === swipedCard) { resetSwipe(); return; }
+          node = node.parentElement;
+        }
+        resetSwipe();
+      }
       while (t && t !== document) {
         var act = t.getAttribute('data-a');
         if (act) { handleAction(act, t); return; }
@@ -193,6 +209,45 @@ export default function Home() {
     document.addEventListener('change', changeHandler);
     document.addEventListener('input', inputHandler);
     document.addEventListener('keydown', keydownHandler);
+
+    var touchStartHandler = function(e) {
+      var node = e.target, card = null;
+      while (node && node !== document) {
+        if (node.classList && node.classList.contains('hcard') && node.parentElement && node.parentElement.classList.contains('swipe-wrap')) { card = node; break; }
+        node = node.parentElement;
+      }
+      if (!card) { resetSwipe(); return; }
+      var isSame = swipedCard === card;
+      if (swipedCard && !isSame) resetSwipe();
+      swipe = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, card: card, isH: null, baseX: isSame ? -76 : 0, x: isSame ? -76 : 0 };
+    };
+    var touchMoveHandler = function(e) {
+      if (!swipe) return;
+      var dx = e.touches[0].clientX - swipe.startX;
+      var dy = e.touches[0].clientY - swipe.startY;
+      if (swipe.isH === null) {
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+        swipe.isH = Math.abs(dx) >= Math.abs(dy);
+        if (!swipe.isH) { swipe = null; return; }
+      }
+      if (!swipe.isH) return;
+      e.preventDefault();
+      var x = Math.min(0, Math.max(-76, swipe.baseX + dx));
+      swipe.x = x;
+      swipe.card.style.transition = 'none';
+      swipe.card.style.transform = 'translateX(' + x + 'px)';
+    };
+    var touchEndHandler = function(e) {
+      if (!swipe) return;
+      var card = swipe.card, x = swipe.x;
+      card.style.transition = 'transform .22s';
+      if (x < -38) { card.style.transform = 'translateX(-76px)'; swipedCard = card; }
+      else { card.style.transform = ''; swipedCard = null; }
+      swipe = null;
+    };
+    document.addEventListener('touchstart', touchStartHandler);
+    document.addEventListener('touchmove', touchMoveHandler, { passive: false });
+    document.addEventListener('touchend', touchEndHandler);
 
     // ── MODAL ──
     function openMov(){
@@ -246,11 +301,14 @@ export default function Home() {
         h+='<div class="st">🛍 代行</div>';
         D.popups.forEach(function(p){
           var gt=grandTot(p),cc=cStats(p);
-          h+='<div class="hcard" data-a="openP" data-id="'+p.id+'">'
+          h+='<div class="swipe-wrap">'
+            +'<button class="swipe-del-btn" data-a="delP" data-id="'+p.id+'">🗑<br>削除</button>'
+            +'<div class="hcard" data-a="openP" data-id="'+p.id+'">'
             +'<div class="hcard-av av-p">🎪</div>'
             +'<div class="hcard-body"><div class="hcard-name">'+esc(p.name)+'</div><div class="hcard-meta">'+(p.group?esc(p.group)+'　':'')+(p.date||'')+'</div></div>'
             +'<div class="hcard-r"><div class="hcard-total">'+fB(gt.k,gt.j)+'</div>'
-            +'<div class="hcard-badges">'+(cc.t>0?'<span class="bdg bp2">'+cc.c+'/'+cc.t+'✓</span>':'')+(p.persons.length?'<span class="bdg bp2">'+p.persons.length+'人</span>':'')+'</div></div></div>';
+            +'<div class="hcard-badges">'+(cc.t>0?'<span class="bdg bp2">'+cc.c+'/'+cc.t+'✓</span>':'')+(p.persons.length?'<span class="bdg bp2">'+p.persons.length+'人</span>':'')+'</div></div>'
+            +'</div></div>';
         });
       }
       if(D.joints.length){
@@ -258,10 +316,13 @@ export default function Home() {
         D.joints.forEach(function(j){
           var ns=0,paid=0;
           (j.jproducts||[]).forEach(function(jp){ (jp.buyers||[]).forEach(function(b){ ns++; if(b.paid)paid++; }); });
-          h+='<div class="hcard" data-a="openJ" data-id="'+j.id+'">'
+          h+='<div class="swipe-wrap">'
+            +'<button class="swipe-del-btn" data-a="delJ" data-id="'+j.id+'">🗑<br>削除</button>'
+            +'<div class="hcard" data-a="openJ" data-id="'+j.id+'">'
             +'<div class="hcard-av av-j">🤝</div>'
             +'<div class="hcard-body"><div class="hcard-name">'+esc(j.name)+'</div>'
-            +'<div class="hcard-meta">'+(j.group?esc(j.group)+'　':'')+(j.date?j.date+'　':'')+(j.jproducts||[]).length+'商品　'+ns+'枠　💰'+paid+'/'+ns+'</div></div></div>';
+            +'<div class="hcard-meta">'+(j.group?esc(j.group)+'　':'')+(j.date?j.date+'　':'')+(j.jproducts||[]).length+'商品　'+ns+'枠　💰'+paid+'/'+ns+'</div></div>'
+            +'</div></div>';
         });
       }
       el.innerHTML=h;
@@ -273,7 +334,7 @@ export default function Home() {
       var p=findP(D.curP);
       if(!p){
         var h='<div class="empty"><div class="empty-ico">🛍</div><div class="empty-ttl">案件を選んでください</div></div>';
-        if(D.popups.length){ h+='<div class="st">一覧</div>'; D.popups.forEach(function(x){ h+='<div class="hcard" data-a="openP" data-id="'+x.id+'"><div class="hcard-av av-p">🎪</div><div class="hcard-body"><div class="hcard-name">'+esc(x.name)+'</div></div></div>'; }); }
+        if(D.popups.length){ h+='<div class="st">一覧</div>'; D.popups.forEach(function(x){ h+='<div class="swipe-wrap"><button class="swipe-del-btn" data-a="delP" data-id="'+x.id+'">🗑<br>削除</button><div class="hcard" data-a="openP" data-id="'+x.id+'"><div class="hcard-av av-p">🎪</div><div class="hcard-body"><div class="hcard-name">'+esc(x.name)+'</div></div></div></div>'; }); }
         el.innerHTML=h; return;
       }
       var pg=p._pg||'products';
@@ -470,7 +531,7 @@ export default function Home() {
       var j=findJ(D.curJ);
       if(!j){
         var h='<div class="empty"><div class="empty-ico">🤝</div><div class="empty-ttl">共同購入を選んでください</div></div>';
-        if(D.joints.length){ h+='<div class="st">一覧</div>'; D.joints.forEach(function(x){ h+='<div class="hcard" data-a="openJ" data-id="'+x.id+'"><div class="hcard-av av-j">🤝</div><div class="hcard-body"><div class="hcard-name">'+esc(x.name)+'</div></div></div>'; }); }
+        if(D.joints.length){ h+='<div class="st">一覧</div>'; D.joints.forEach(function(x){ h+='<div class="swipe-wrap"><button class="swipe-del-btn" data-a="delJ" data-id="'+x.id+'">🗑<br>削除</button><div class="hcard" data-a="openJ" data-id="'+x.id+'"><div class="hcard-av av-j">🤝</div><div class="hcard-body"><div class="hcard-name">'+esc(x.name)+'</div></div></div></div>'; }); }
         el.innerHTML=h; return;
       }
       if(!D.ojp[j.id]) D.ojp[j.id]={};
@@ -620,6 +681,9 @@ export default function Home() {
       document.removeEventListener('change', changeHandler);
       document.removeEventListener('input', inputHandler);
       document.removeEventListener('keydown', keydownHandler);
+      document.removeEventListener('touchstart', touchStartHandler);
+      document.removeEventListener('touchmove', touchMoveHandler);
+      document.removeEventListener('touchend', touchEndHandler);
     };
   }, []);
 
