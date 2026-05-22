@@ -13,7 +13,6 @@ export default function Home() {
     var DB_PATH = 'popupManagerData';
     var fbRef, fbSet, fbGet;
     var pendingSave = false;
-    var firebaseLoaded = false;
 
     // ── STORAGE ──
     function saveData() {
@@ -265,10 +264,6 @@ export default function Home() {
       var el=document.getElementById('scPopup');
       var p=findP(D.curP);
       if(!p){
-        if(D.curP && !firebaseLoaded){
-          el.innerHTML='<div class="empty"><div class="empty-ico">⏳</div><div class="empty-ttl">読み込み中...</div></div>';
-          return;
-        }
         var h='<div class="empty"><div class="empty-ico">🛍</div><div class="empty-ttl">案件を選んでください</div></div>';
         if(D.popups.length){ h+='<div class="st">一覧</div>'; D.popups.forEach(function(x){ h+='<div class="hcard" data-a="openP" data-id="'+x.id+'"><div class="hcard-av av-p">🎪</div><div class="hcard-body"><div class="hcard-name">'+esc(x.name)+'</div></div></div>'; }); }
         el.innerHTML=h; return;
@@ -466,10 +461,6 @@ export default function Home() {
       var el=document.getElementById('scJoint');
       var j=findJ(D.curJ);
       if(!j){
-        if(D.curJ && !firebaseLoaded){
-          el.innerHTML='<div class="empty"><div class="empty-ico">⏳</div><div class="empty-ttl">読み込み中...</div></div>';
-          return;
-        }
         var h='<div class="empty"><div class="empty-ico">🤝</div><div class="empty-ttl">共同購入を選んでください</div></div>';
         if(D.joints.length){ h+='<div class="st">一覧</div>'; D.joints.forEach(function(x){ h+='<div class="hcard" data-a="openJ" data-id="'+x.id+'"><div class="hcard-av av-j">🤝</div><div class="hcard-body"><div class="hcard-name">'+esc(x.name)+'</div></div></div>'; }); }
         el.innerHTML=h; return;
@@ -601,7 +592,6 @@ export default function Home() {
       fbRef = m.ref;
       fbSet = m.set;
       fbGet = m.get;
-      firebaseLoaded = true;
       return loadData();
     }).then(function() {
       if (pendingSave) saveData();
@@ -611,7 +601,6 @@ export default function Home() {
       else rStats();
     }).catch(function(e) {
       console.error('Firebase load error:', e);
-      firebaseLoaded = true;
       if (D.tab === 0) rHome();
       else if (D.tab === 1) rPopup();
       else if (D.tab === 2) rJoint();
